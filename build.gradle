@@ -9,6 +9,7 @@ versioning {
 }
 
 group 'dk.polytope'
+
 version versioning.name
 
 sourceCompatibility = 1.8
@@ -77,7 +78,7 @@ version=${project.version}
 
 jar {
     dependsOn("generatePomFileForMavenJavaPublication", "generatePomPropertiesForJar")
-    into("META-INF/maven/${project.group}/${project.name}") {
+    into("META-INF/maven/${project.group}/jpaUtils") {
         from(generatePomFileForMavenJavaPublication) {
             rename(".+", "pom.xml")
         }
