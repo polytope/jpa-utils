@@ -13,6 +13,10 @@ version versioning.name
 
 sourceCompatibility = 1.8
 
+java {
+    withSourcesJar()
+}
+
 jar {
     manifest {
         attributes(
