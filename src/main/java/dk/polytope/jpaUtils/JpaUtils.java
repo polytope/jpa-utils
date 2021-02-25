@@ -32,6 +32,7 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
+import java.math.BigInteger;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -382,6 +383,19 @@ public abstract class JpaUtils {
         }
 
         return "".equals(mappedBy) ? null : mappedBy;
+    }
+
+    /**
+     * Count of CriteriaQuery by a native count query
+     *
+     * @param em            Entity Manager
+     * @param criteriaQuery Criteria Query to count results
+     * @return Query
+     * @see <a href="https://stackoverflow.com/a/66323540/1426327">Original StackOverFlow answer</a>
+     */
+    public static Long createNativeCount(EntityManager em, CriteriaQuery<?> criteriaQuery) {
+        Query nativeCountQuery = JpaUtils.createNativeCountQuery(em, countCriteria(em, criteriaQuery));
+        return ((BigInteger) nativeCountQuery.getSingleResult()).longValue();
     }
 
     /**
