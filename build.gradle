@@ -39,6 +39,7 @@ repositories {
 }
 
 dependencies {
+    implementation 'org.hibernate:hibernate-core:5.4.20.Final'
     implementation group: 'javax.persistence', name: 'javax.persistence-api', version: '2.2'
 }
 

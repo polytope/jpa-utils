@@ -16,10 +16,13 @@ package dk.polytope.jpaUtils;
  * limitations under the License.
  */
 
-import javax.persistence.EntityManager;
-import javax.persistence.ManyToMany;
-import javax.persistence.OneToMany;
-import javax.persistence.OneToOne;
+import org.hibernate.engine.spi.SessionFactoryImplementor;
+import org.hibernate.hql.internal.ast.ASTQueryTranslatorFactory;
+import org.hibernate.hql.spi.QueryTranslator;
+import org.hibernate.hql.spi.QueryTranslatorFactory;
+import org.hibernate.query.QueryParameter;
+
+import javax.persistence.*;
 import javax.persistence.criteria.*;
 import javax.persistence.metamodel.Attribute;
 import javax.persistence.metamodel.Attribute.PersistentAttributeType;
@@ -29,8 +32,7 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -84,6 +86,7 @@ public abstract class JpaUtils {
 
     /**
      * Gets The result alias, if none set a default one and return it
+     *
      * @return root alias or generated one
      */
     public static synchronized <T> String getOrCreateAlias(Selection<T> selection) {
@@ -379,5 +382,50 @@ public abstract class JpaUtils {
         }
 
         return "".equals(mappedBy) ? null : mappedBy;
+    }
+
+    /**
+     * Native count query from a CriteriaQuery
+     *
+     * @param em            Entity Manager
+     * @param criteriaQuery Criteria Query to count results
+     * @return Query
+     * @see <a href="https://stackoverflow.com/a/66323540/1426327">Original StackOverFlow answer</a>
+     */
+    public static Query createNativeCountQuery(EntityManager em, CriteriaQuery<?> criteriaQuery) {
+        org.hibernate.query.Query<?> hibernateQuery = em.createQuery(criteriaQuery).unwrap(org.hibernate.query.Query.class);
+        String hqlQuery = hibernateQuery.getQueryString();
+
+        QueryTranslatorFactory queryTranslatorFactory = new ASTQueryTranslatorFactory();
+        QueryTranslator queryTranslator = queryTranslatorFactory.createQueryTranslator(
+                hqlQuery,
+                hqlQuery,
+                Collections.emptyMap(),
+                em.getEntityManagerFactory().unwrap(SessionFactoryImplementor.class),
+                null
+        );
+        queryTranslator.compile(Collections.emptyMap(), false);
+
+        String sqlCountQueryTemplate = "select count(*) from (%s) a";
+        String sqlCountQuery = String.format(sqlCountQueryTemplate, queryTranslator.getSQLString());
+
+        Query nativeCountQuery = em.createNativeQuery(sqlCountQuery);
+
+        Map<Integer, Object> positionalParamBindings = getPositionalParamBindingsFromNamedParams(hibernateQuery);
+        positionalParamBindings.forEach(nativeCountQuery::setParameter);
+
+        return nativeCountQuery;
+    }
+
+    private static Map<Integer, Object> getPositionalParamBindingsFromNamedParams(org.hibernate.query.Query<?> hibernateQuery) {
+        Map<Integer, Object> bindings = new HashMap<>();
+
+        for (QueryParameter<?> namedParam : hibernateQuery.getParameterMetadata().getNamedParameters()) {
+            for (int location : namedParam.getSourceLocations()) {
+                bindings.put(location + 1, hibernateQuery.getParameterValue(namedParam.getName()));
+            }
+        }
+
+        return bindings;
     }
 }
